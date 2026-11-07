@@ -34,7 +34,7 @@ QUESTIONS = [
     ("Missing", "leads?"),
     ("Slow DM", "replies?"),
     ("Manual", "follow-ups?"),
-    ("Booking", "chaos?"),
+    ("Need an", "app?"),
     ("Need all", "of it?"),
 ]
 
@@ -45,7 +45,9 @@ BALL_R = 15
 STOP_F = 396            # ball comes to rest at the right on "DM us."
 ZOOM_F0, ZOOM_F1 = 411, 465
 ZOOM_S, ZOOM_C = 1.23, (362.0, 568.0)
-CARD_F = 480            # cut to the Instagram card
+CARD_F = 480            # cut to the Instagram icon
+PROFILE_F = 522         # icon hands over to the profile end card
+TAP_F = 566             # "Follow" button gets tapped
 BASELINE = 634          # baseline of "Sorted." / "DM us."
 TEXT_RIGHT = 562        # right edge of "Sorted." / "DM us." (ball sits just after)
 
@@ -221,9 +223,107 @@ def dim(L, amount):
     return Image.merge("RGBA", (r, g, b, a))
 
 
+# ----------------------------------------------------------------- profile end card
+F_NAME = font("Bold", 34)
+F_USER = font("Medium", 19, display=False)
+F_BIO = font("Medium", 19.5, display=False)
+F_BTN = font("Bold", 24)
+F_CTA = font("Bold", 46)
+F_CTA_SUB = font("Medium", 20, display=False)
+BLUE = (74, 93, 249)
+
+
+class ProfileCard:
+    def __init__(self, name, handle, bio, avatar_path):
+        self.name, self.handle, self.bio = name, handle, bio
+        av = Image.open(avatar_path).convert("RGBA")
+        d = int(s(140))
+        self.avatar = av.resize((d, d), Image.LANCZOS)
+        # Instagram-style gradient ring
+        rd = int(s(160))
+        ring = gradient_icon_ring(rd)
+        self.ring = ring
+
+    def render(self, t, tap):
+        """t = frames since card start, tap = frames since Follow tap (negative before)."""
+        L = layer()
+        a = ease_io(t / 12)
+        rise = (1 - ease_out_back(t / 16)) * s(80)
+        d = ImageDraw.Draw(L)
+        # "Follow for more" header
+        hdr = "Follow for more"
+        hw = tracked_width(hdr, F_CTA, -0.03)
+        draw_tracked(d, s(360) - hw / 2, s(300) + rise, hdr, F_CTA, (*WHITE, int(255 * a)), -0.03)
+        sub = "Websites + AI automation that save you hours"
+        sw = tracked_width(sub, F_CTA_SUB, 0)
+        draw_tracked(d, s(360) - sw / 2, s(338) + rise, sub, F_CTA_SUB, (*GREY, int(255 * a)), 0)
+
+        x0, y0, x1, y1 = s(78), s(388) + rise, s(642), s(925) + rise
+        d.rounded_rectangle([x0, y0, x1, y1], radius=s(34), fill=(22, 22, 26, int(255 * a)),
+                            outline=(60, 60, 68, int(255 * a)), width=max(1, int(s(1.5))))
+        # avatar with rotating gradient ring
+        cx, cy = s(360), s(498) + rise
+        ring = self.ring.rotate(-t * 4, resample=Image.BICUBIC)
+        L.alpha_composite(dim(ring, 1 - a), (int(cx - ring.size[0] / 2), int(cy - ring.size[1] / 2)))
+        d.ellipse([cx - s(74), cy - s(74), cx + s(74), cy + s(74)], fill=(22, 22, 26, int(255 * a)))
+        av = dim(self.avatar, 1 - a)
+        L.alpha_composite(av, (int(cx - av.size[0] / 2), int(cy - av.size[1] / 2)))
+        # name, handle, bio
+        nw = tracked_width(self.name, F_NAME, -0.02)
+        draw_tracked(d, s(360) - nw / 2, s(628) + rise, self.name, F_NAME, (255, 255, 255, int(255 * a)), -0.02)
+        uw = tracked_width(self.handle, F_USER, 0)
+        draw_tracked(d, s(360) - uw / 2, s(662) + rise, self.handle, F_USER, (*GREY, int(255 * a)), 0)
+        for i, line in enumerate(self.bio):
+            la = ease_io((t - 6 - i * 3) / 8)
+            lw = tracked_width(line, F_BIO, 0)
+            draw_tracked(d, s(360) - lw / 2, s(712 + i * 31) + rise, line, F_BIO,
+                         (230, 230, 234, int(255 * la)), 0)
+        # Follow button with tap
+        ba = ease_io((t - 14) / 8)
+        press = 1.0
+        if 0 <= tap < 8:
+            press = 1 - 0.07 * math.sin(math.pi * tap / 8)
+        followed = tap >= 4
+        bw, bh = s(400) * press, s(60) * press
+        bcx, bcy = s(360), s(858) + rise
+        col = (54, 54, 62) if followed else BLUE
+        d.rounded_rectangle([bcx - bw / 2, bcy - bh / 2, bcx + bw / 2, bcy + bh / 2], radius=s(16),
+                            fill=(*col, int(255 * ba)))
+        label = "Following" if followed else "Follow"
+        bw2 = tracked_width(label, F_BTN, -0.01)
+        asc = F_BTN.getmetrics()[0]
+        cap = F_BTN.getbbox("F")
+        draw_tracked(d, bcx - bw2 / 2, bcy + (cap[3] - cap[1]) / 2, label, F_BTN,
+                     (255, 255, 255, int(255 * ba)), -0.01)
+        # tap ripple
+        if 0 <= tap < 14:
+            q = tap / 14
+            rr = s(20 + 60 * q)
+            d.ellipse([bcx + s(60) - rr, bcy - rr, bcx + s(60) + rr, bcy + rr],
+                      outline=(255, 255, 255, int(200 * (1 - q))), width=max(1, int(s(3))))
+        return L
+
+
+def gradient_icon_ring(size):
+    stops = [(255, 214, 0), (255, 122, 0), (255, 1, 105), (211, 0, 197), (118, 56, 250), (255, 214, 0)]
+    n = size
+    yy, xx = np.mgrid[0:n, 0:n] - (n - 1) / 2
+    ang = (np.arctan2(yy, xx) / (2 * np.pi)) % 1.0 * (len(stops) - 1)
+    i = np.floor(ang).astype(int)
+    fr = (ang - i)[..., None]
+    st = np.array(stops, dtype=float)
+    col = st[i] * (1 - fr) + st[np.minimum(i + 1, len(stops) - 1)] * fr
+    rr = np.sqrt(xx ** 2 + yy ** 2)
+    outer = n / 2
+    alpha = np.clip(outer - rr, 0, 1) * np.clip(rr - (outer - s(5)), 0, 1)
+    rgba = np.dstack([col, alpha * 255]).astype(np.uint8)
+    return Image.fromarray(rgba, "RGBA")
+
+
 # ----------------------------------------------------------------- frame renderer
 class Reel:
-    def __init__(self, brand, tagline, handle):
+    def __init__(self, brand, tagline, handle, profile):
+        self.profile = profile
         self.q = [question_layer(*q) for q in QUESTIONS]
         self.sorted = big_layer("Sorted")
         self.dm = big_layer("DM us")
@@ -269,9 +369,10 @@ class Reel:
         content.alpha_composite(self.brand)
         content = scale_layer(content, k, ZOOM_C)
 
+        out_a = ease_io((f - PROFILE_F) / 12) if f >= PROFILE_F else 0.0   # icon phase fading out
         if f >= CARD_F:
             img = Image.new("RGBA", (W, H), (0, 0, 0, 255))
-            content = dim(content, 0.72)
+            content = dim(content, 0.72 + 0.28 * out_a)
         img.alpha_composite(content)
 
         # small corner badge
@@ -284,25 +385,27 @@ class Reel:
                 a = clamp((f - 264) / 8)
                 img.alpha_composite(dim(self.badge_bl, 1 - a))
 
-        # Instagram card
-        if f >= CARD_F:
+        # Instagram icon + handle
+        if CARD_F <= f < PROFILE_F + 12:
             p = ease_out_back((f - CARD_F) / 14)
-            size = s(104) * max(0.01, p)
-            cf = f - (CARD_F + 20)
-            if 0 <= cf < 75:
-                ic = gradient_icon(size, cf / 40)
-            else:
-                ic = ig_icon(size)
-            cx, cy = s(360), s(610)
+            size = s(104) * max(0.01, p) * (1 - 0.4 * out_a)
+            cf = f - (CARD_F + 8)
+            ic = gradient_icon(size, cf / 40) if cf >= 0 else ig_icon(size)
+            ic = dim(ic, out_a)
+            cx, cy = s(360), s(610) - s(60) * out_a
             if p > 0.02:
                 img.alpha_composite(ic, (int(cx - ic.size[0] / 2), int(cy - ic.size[1] / 2)))
-            ha = clamp((f - CARD_F - 4) / 8)
+            ha = clamp((f - CARD_F - 4) / 8) * (1 - out_a)
             if ha > 0:
                 hl = layer()
                 hw = tracked_width(self.handle, F_HANDLE_L, -0.01)
                 draw_tracked(ImageDraw.Draw(hl), s(360) - hw / 2, s(748), self.handle, F_HANDLE_L,
                              (255, 255, 255, int(255 * ha)), -0.01)
                 img.alpha_composite(hl)
+
+        # profile end card
+        if f >= PROFILE_F:
+            img.alpha_composite(self.profile.render(f - PROFILE_F, f - TAP_F))
         return img.convert("RGB")
 
 
@@ -311,14 +414,18 @@ def main():
     ap.add_argument("--audio", required=True, help="audio source (e.g. the reference reel)")
     ap.add_argument("--audio-offset", type=float, default=0.0)
     ap.add_argument("--out", default="reel/output/pendulum_reel.mp4")
-    ap.add_argument("--brand", default="your brand")
-    ap.add_argument("--tagline", default="WEBSITES · AI CHATBOTS · AUTOMATION · CRM")
-    ap.add_argument("--handle", default="@YOURHANDLE")
+    ap.add_argument("--brand", default="visionary byteworks")
+    ap.add_argument("--tagline", default="AI AUTOMATIONS · WEB · MOBILE APPS")
+    ap.add_argument("--handle", default="@visionary_byteworks")
+    ap.add_argument("--name", default="Visionary ByteWorks", help="display name on the profile end card")
+    ap.add_argument("--avatar", default="reel/assets/avatar.png")
+    ap.add_argument("--bio", default="AI automations · Web · Mobile apps;n8n | LangGraph | React | Flutter;Save businesses time + ship fast",
+                    help="profile bio lines separated by ;")
     ap.add_argument("--stills", default="", help="comma-separated frame numbers to save as PNG")
     a = ap.parse_args()
 
     os.makedirs(os.path.dirname(a.out) or ".", exist_ok=True)
-    reel = Reel(a.brand, a.tagline, a.handle.upper())
+    reel = Reel(a.brand, a.tagline, a.handle.upper(), ProfileCard(a.name, a.handle, a.bio.split(";"), a.avatar))
     stills = {int(x) for x in a.stills.split(",") if x.strip()}
     cmd = ["ffmpeg", "-y", "-loglevel", "error",
            "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{W}x{H}", "-r", str(FPS), "-i", "-",

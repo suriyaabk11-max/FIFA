@@ -36,12 +36,15 @@ timing and the audio come from the reference reel.
 | 2.4–4.8 s | Missing leads? → Sorted. |
 | 4.8–7.2 s | Slow DM replies? → Sorted. |
 | 7.2–9.6 s | Manual follow-ups? → Sorted. |
-| 9.6–12 s | Booking chaos? → Sorted. |
-| 12–13.2 s | Need all of it? → DM us. (zoom, then Instagram card at 16 s) |
+| 9.6–12 s | Need an app? → Sorted. |
+| 12–13.2 s | Need all of it? → DM us. (zoom, then Instagram icon at 16 s) |
+| 17.4–20 s | Visionary ByteWorks profile card (logo, bio, Follow → Following) |
 
 ```bash
 python3 reel/pendulum_reel.py --audio path/to/reference.mp4 \
-  --brand "your brand" --handle "@yourhandle" \
-  --tagline "WEBSITES · AI CHATBOTS · AUTOMATION · CRM"
+  --brand "visionary byteworks" --handle "@visionary_byteworks" \
+  --name "Visionary ByteWorks" --avatar reel/assets/avatar.png
 ```
 Edit `QUESTIONS` at the top of `pendulum_reel.py` to change the problems.
+
+Voiceover script for ElevenLabs, with timings: `elevenlabs_voiceover.md`.
