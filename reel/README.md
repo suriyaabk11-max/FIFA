@@ -52,8 +52,10 @@ Voiceover script for ElevenLabs, with timings: `elevenlabs_voiceover.md`.
 ## Voiceover version (`output/pendulum_reel_voiceover.mp4`)
 Voice: the ElevenLabs cloned voice "swe" (`naFCqhpY6IGphQnbzz7I`), model `eleven_multilingual_v2`.
 The two raw takes are in `assets/vo/`. `make_voiceover_mix.py` cuts take 1 into its 14 lines,
-places each line on its swing (question as it appears, "Sorted." as the ball lands), and mixes the
-music underneath at about 32% volume:
+slows the speech 10% (pitch unchanged), places each line on its swing (question as it appears,
+"Sorted." as the ball lands) with no overlaps, and lays it over original sound effects: a whoosh on
+each swing, a tick on each landing and a quiet pad. The reference reel's audio is its creator's own
+voiceover, so only its short impact hit (16.2 s, no speech) is kept:
 ```bash
 python3 reel/make_voiceover_mix.py reel/assets/vo/take1.mp3 path/to/reference.mp4 \
   reel/output/pendulum_reel.mp4 reel/output/pendulum_reel_voiceover.mp4
