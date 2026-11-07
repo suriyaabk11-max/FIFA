@@ -48,3 +48,13 @@ python3 reel/pendulum_reel.py --audio path/to/reference.mp4 \
 Edit `QUESTIONS` at the top of `pendulum_reel.py` to change the problems.
 
 Voiceover script for ElevenLabs, with timings: `elevenlabs_voiceover.md`.
+
+## Voiceover version (`output/pendulum_reel_voiceover.mp4`)
+Voice: the ElevenLabs cloned voice "swe" (`naFCqhpY6IGphQnbzz7I`), model `eleven_multilingual_v2`.
+The two raw takes are in `assets/vo/`. `make_voiceover_mix.py` cuts take 1 into its 14 lines,
+places each line on its swing (question as it appears, "Sorted." as the ball lands), and mixes the
+music underneath at about 32% volume:
+```bash
+python3 reel/make_voiceover_mix.py reel/assets/vo/take1.mp3 path/to/reference.mp4 \
+  reel/output/pendulum_reel.mp4 reel/output/pendulum_reel_voiceover.mp4
+```
